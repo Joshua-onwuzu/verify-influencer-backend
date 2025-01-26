@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ResearchInfluencerPayload } from 'src/types';
+import { AnalysedClaimsResult, ResearchInfluencerPayload } from 'src/types';
 import {
   analyzeForHealthRelatedClaims,
   searchPodcast,
@@ -33,18 +33,16 @@ export class ResearchService {
         };
       }
       console.log('3');
-      const analyzedResult = await analyzeForHealthRelatedClaims([
-        ...twitterSearchResult,
-        ...podcastSearchResult,
-      ]);
+      const previousClaims = ((await this.claimModel
+        .findOne({ name })
+        .exec()) || []) as AnalysedClaimsResult[];
 
-      const response = await updateOrCreateClaimRecord(
-        analyzedResult,
-        name,
-        this.claimModel,
+      const analyzedResult = await analyzeForHealthRelatedClaims(
+        [...twitterSearchResult, ...podcastSearchResult],
+        previousClaims,
       );
 
-      console.log(response);
+      await updateOrCreateClaimRecord(analyzedResult, name, this.claimModel);
 
       return {
         success: true,
