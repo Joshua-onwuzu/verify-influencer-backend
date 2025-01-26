@@ -21,9 +21,13 @@
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
+    "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.1",
+    "@nestjs/mongoose": "^11.0.0",
     "@nestjs/platform-express": "^11.0.1",
     "assemblyai": "^4.8.0",
+    "mongoose": "^8.9.5",
+    "openai": "^4.80.1",
     "perplexity-sdk": "^1.0.4",
     "podcast-api": "^2.0.4",
     "reflect-metadata": "^0.2.2",

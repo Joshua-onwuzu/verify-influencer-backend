@@ -4,30 +4,51 @@ import {
   analyzeForHealthRelatedClaims,
   searchPodcast,
   searchTwitter,
+  updateOrCreateClaimRecord,
 } from 'src/utils';
+import { Claim, InfluencerClaims } from './claims.schema';
+import { Model } from 'mongoose';
+import { InjectModel } from '@nestjs/mongoose';
 
 @Injectable()
 export class ResearchService {
+  constructor(
+    @InjectModel(Claim.name) private claimModel: Model<InfluencerClaims>,
+  ) {}
   async researchInfluencer(data: ResearchInfluencerPayload) {
     try {
       const { name } = data;
       console.log('1');
-      // const twitterSearchResult = await searchTwitter(name);
+      const twitterSearchResult = await searchTwitter(name);
       console.log('2');
       const podcastSearchResult = await searchPodcast(name);
+      if (
+        twitterSearchResult.length === 0 &&
+        podcastSearchResult.length === 0
+      ) {
+        return {
+          success: true,
+          data: [],
+          message: 'No data found',
+        };
+      }
       console.log('3');
       const analyzedResult = await analyzeForHealthRelatedClaims([
-        // ...twitterSearchResult,
+        ...twitterSearchResult,
         ...podcastSearchResult,
       ]);
-      console.log('finalie');
+
+      const response = await updateOrCreateClaimRecord(
+        analyzedResult,
+        name,
+        this.claimModel,
+      );
+
+      console.log(response);
 
       return {
         success: true,
-        data: [],
-        analyzedResult,
-        podcastSearchResult,
-        // twitterSearchResult,
+        data: analyzedResult,
       };
     } catch (error) {
       return {
