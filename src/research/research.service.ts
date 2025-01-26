@@ -4,16 +4,19 @@ import {
   analyzeForHealthRelatedClaims,
   searchPodcast,
   searchTwitter,
+  updateOrCreateClaimCategoryRecord,
   updateOrCreateClaimRecord,
 } from 'src/utils';
 import { Claim, InfluencerClaims } from './claims.schema';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
+import { Category, ClaimCategory } from 'src/schema/category.schema';
 
 @Injectable()
 export class ResearchService {
   constructor(
     @InjectModel(Claim.name) private claimModel: Model<InfluencerClaims>,
+    @InjectModel(Category.name) private categoryModel: Model<ClaimCategory>,
   ) {}
   async researchInfluencer(data: ResearchInfluencerPayload) {
     try {
@@ -43,6 +46,13 @@ export class ResearchService {
       );
 
       await updateOrCreateClaimRecord(analyzedResult, name, this.claimModel);
+
+      const resultCategories = analyzedResult.map((data) => data.category);
+
+      await updateOrCreateClaimCategoryRecord(
+        resultCategories,
+        this.categoryModel,
+      );
 
       return {
         success: true,

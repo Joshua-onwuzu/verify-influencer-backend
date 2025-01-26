@@ -18,6 +18,7 @@ import Perplexity, {
 import { InfluencerClaims } from 'src/research/claims.schema';
 import { Model } from 'mongoose';
 import OpenAI from 'openai';
+import { ClaimCategory } from 'src/schema/category.schema';
 
 export const searchTwitter = async (
   query: string,
@@ -202,6 +203,29 @@ export const updateOrCreateClaimRecord = async (
       .exec();
 
     return response;
+  }
+};
+
+export const initializeCollection = async (
+  model: Model<ClaimCategory>,
+): Promise<ClaimCategory> => {
+  const existing = await model.findOne();
+  if (existing) return existing;
+
+  const newTracker = new model({ categories: [] });
+  return newTracker.save();
+};
+
+export const updateOrCreateClaimCategoryRecord = async (
+  result: string[],
+  model: Model<ClaimCategory>,
+) => {
+  const categoryCollection = await initializeCollection(model);
+  for (const category of result) {
+    if (!categoryCollection.categories.includes(category)) {
+      categoryCollection.categories.push(category);
+      await categoryCollection.save();
+    }
   }
 };
 
