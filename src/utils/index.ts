@@ -9,6 +9,7 @@ import {
   AnalysedClaimsResult,
   PodcastSearchResponse,
   SearchQueryResult,
+  VerificationStatus,
 } from 'src/types';
 import Perplexity, {
   ChatCompletionsPostRequest,
@@ -269,4 +270,58 @@ export const generateMessage = (input: string, prevClaim: string) => {
   ];
 
   return messages;
+};
+
+export const getCategories = async (
+  model: Model<ClaimCategory>,
+): Promise<string[]> => {
+  return (await model.findOne())?.categories || [];
+};
+
+export const getTotalVerifiedClaimAndAverageTrustScore = (
+  data: InfluencerClaims[],
+) => {
+  const allClaims = data.flatMap((person) => person.claim);
+  const verifiedClaims = allClaims.filter(
+    (claim) => claim.verification_status === VerificationStatus.VERIFIED,
+  );
+  const totalVerifiedClaims = verifiedClaims.length;
+  const totalTrustScore = verifiedClaims.reduce(
+    (sum, claim) => sum + claim.trust_score,
+    0,
+  );
+  const averageTrustScore =
+    totalVerifiedClaims > 0 ? totalTrustScore / totalVerifiedClaims : 0;
+
+  return {
+    total_verified_claims: totalVerifiedClaims,
+    average_trust_score: parseFloat(averageTrustScore.toFixed(2)),
+  };
+};
+
+export const filterByCategory = async (
+  model: Model<InfluencerClaims>,
+  category: string,
+) => {
+  return model.aggregate([
+    {
+      $project: {
+        name: 1,
+        claim: {
+          $filter: {
+            input: '$claim',
+            as: 'claimItem',
+            cond: { $eq: ['$$claimItem.category', category] },
+          },
+        },
+        last_updated: 1,
+        __v: 1,
+      },
+    },
+    {
+      $match: {
+        claim: { $ne: [] }, // Exclude documents with an empty `claim` array
+      },
+    },
+  ]);
 };

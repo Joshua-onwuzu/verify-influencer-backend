@@ -1,3 +1,5 @@
+import { InfluencerClaims } from 'src/research/claims.schema';
+
 export type InfluencerProfile = {
   name: string;
   category: string[];
@@ -12,7 +14,13 @@ export interface IApiResponse {
 }
 
 export interface IGetLeaderboardResponse extends IApiResponse {
-  data: InfluencerProfile[];
+  data: {
+    categories: string[];
+    total_claims: number;
+    total_verified_claims: number;
+    average_trust_score: number;
+    claims: InfluencerClaims[];
+  };
 }
 
 export enum ClaimStatus {
