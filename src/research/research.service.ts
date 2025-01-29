@@ -20,11 +20,29 @@ export class ResearchService {
   ) {}
   async researchInfluencer(data: ResearchInfluencerPayload) {
     try {
-      const { name } = data;
-      console.log('1');
-      const twitterSearchResult = await searchTwitter(name);
-      console.log('2');
-      const podcastSearchResult = await searchPodcast(name);
+      const {
+        name,
+        time,
+        listen_notes_key,
+        claim_size,
+        openAi_key,
+        assemblyAi_key,
+        perplexity_key,
+        twitter_bearer_token,
+      } = data;
+      const twitterSearchResult = await searchTwitter(
+        name,
+        twitter_bearer_token,
+        claim_size,
+        time,
+      );
+      const podcastSearchResult = await searchPodcast(
+        name,
+        listen_notes_key,
+        assemblyAi_key,
+        claim_size,
+        time,
+      );
       if (
         twitterSearchResult.length === 0 &&
         podcastSearchResult.length === 0
@@ -35,7 +53,6 @@ export class ResearchService {
           message: 'No data found',
         };
       }
-      console.log('3');
       const previousClaims = ((await this.claimModel
         .findOne({ name })
         .exec()) || []) as AnalysedClaimsResult[];
@@ -43,6 +60,10 @@ export class ResearchService {
       const analyzedResult = await analyzeForHealthRelatedClaims(
         [...twitterSearchResult, ...podcastSearchResult],
         previousClaims,
+        {
+          openAi_key,
+          perplexity_key,
+        },
       );
 
       await updateOrCreateClaimRecord(analyzedResult, name, this.claimModel);

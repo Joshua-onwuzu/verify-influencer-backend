@@ -7,8 +7,10 @@ import { Client } from 'podcast-api';
 import { AssemblyAI } from 'assemblyai';
 import {
   AnalysedClaimsResult,
+  Journal,
   PodcastSearchResponse,
   SearchQueryResult,
+  Time,
   VerificationStatus,
 } from 'src/types';
 import Perplexity, {
@@ -23,13 +25,23 @@ import { ClaimCategory } from 'src/schema/category.schema';
 
 export const searchTwitter = async (
   query: string,
+  token: string,
+  size: number,
+  time: Time,
 ): Promise<SearchQueryResult[]> => {
   try {
     const twitterClient = new TwitterApi(
-      process.env.TWITTER_BEARER_TOKEN || '',
+      token || process.env.TWITTER_BEARER_TOKEN || '',
     );
     const readOnlyClient = twitterClient.readOnly;
-    const result = await readOnlyClient.v2.search(query);
+    const _time = getTimeRange(time);
+    const start_time = _time.start?.toISOString();
+    const end_time = _time.end.toISOString();
+    const result = await readOnlyClient.v2.search(query, {
+      start_time,
+      end_time,
+      max_results: size,
+    });
 
     //@ts-ignore
     const { data } = result._realData;
@@ -60,10 +72,13 @@ export const convertAudioUsingOpenAI = async (url: string) => {
   return result.text;
 };
 
-const convertUsingAssemblyAI = async (audio_url: string) => {
+const convertUsingAssemblyAI = async (
+  audio_url: string,
+  assemblyAi_key: string,
+) => {
   try {
     const client = new AssemblyAI({
-      apiKey: process.env.ASSEMBLY_AI_API_KEY || '',
+      apiKey: assemblyAi_key || process.env.ASSEMBLY_AI_API_KEY || '',
     });
     const transcript = await client.transcripts.transcribe({ audio_url });
     return transcript.text;
@@ -73,33 +88,69 @@ const convertUsingAssemblyAI = async (audio_url: string) => {
   }
 };
 
-export const getTranscriptFromAudioUrl = async (audio_url: string) => {
-  const response = await convertUsingAssemblyAI(audio_url);
+export const getTranscriptFromAudioUrl = async (
+  audio_url: string,
+  assemblyAi_key: string,
+) => {
+  const response = await convertUsingAssemblyAI(audio_url, assemblyAi_key);
   return response;
 };
 
+export function getTimeRange(time: Time): { start: Date | null; end: Date } {
+  const now = new Date();
+  let start: Date | null = null;
+  const end: Date = now;
+
+  switch (time) {
+    case Time.LAST_WEEK:
+      start = new Date();
+      start.setDate(now.getDate() - 7);
+      break;
+    case Time.LAST_MONTH:
+      start = new Date();
+      start.setMonth(now.getMonth() - 1);
+      break;
+    case Time.LAST_YEAR:
+      start = new Date();
+      start.setFullYear(now.getFullYear() - 1);
+      break;
+    case Time.ALL_TIME:
+      start = null;
+      break;
+  }
+
+  return { start, end };
+}
+
 export const searchPodcast = async (
   query: string,
+  podcast_key: string,
+  assemblyAi_key: string,
+  size: number,
+  time: Time,
 ): Promise<SearchQueryResult[]> => {
   try {
-    console.log({
-      key: process.env.OPEN_AI_API_KEY,
-      x: process.env.LISTEN_NOTES_API_KEY,
-    });
     const podcastClient = Client({
-      apiKey: process.env.LISTEN_NOTES_API_KEY,
+      apiKey: podcast_key || process.env.LISTEN_NOTES_API_KEY,
     });
+    const _time = getTimeRange(time);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const result = (await podcastClient.search({
       q: query,
       language: 'English',
+      page_size: size,
+      published_before: _time.end.getTime(),
+      published_after: _time.start?.getTime(),
     })) as PodcastSearchResponse;
     const resultData = result.data.results;
 
     return await Promise.all(
       resultData.map(async (data) => {
         const audioUrl = data.audio;
-        const transcript = await getTranscriptFromAudioUrl(audioUrl);
+        const transcript = await getTranscriptFromAudioUrl(
+          audioUrl,
+          assemblyAi_key,
+        );
         return {
           link: data.listennotes_url,
           text: transcript || '', // TODO: maybe we entirely skip audio that fail to return a text
@@ -115,9 +166,10 @@ export const searchPodcast = async (
 
 export const analyseUsingPerplexity = async (
   messages: ChatCompletionsPostRequest['messages'],
+  perplexity_key: string,
 ) => {
   const perplexity = new Perplexity({
-    apiKey: process.env.PERPLEXITY_API_KEY || '',
+    apiKey: perplexity_key || process.env.PERPLEXITY_API_KEY || '',
   }).client();
 
   const result = await perplexity.chatCompletionsPost({
@@ -133,9 +185,10 @@ export const analyseUsingPerplexity = async (
 
 export const analyseUsingOpenAi = async (
   messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+  openAi_key: string,
 ) => {
   const openai = new OpenAI({
-    apiKey: process.env.OPEN_AI_API_KEY,
+    apiKey: openAi_key || process.env.OPEN_AI_API_KEY,
   });
   const result = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
@@ -151,6 +204,10 @@ export const analyseUsingOpenAi = async (
 export const analyzeForHealthRelatedClaims = async (
   contentArray: SearchQueryResult[],
   previousClaims: AnalysedClaimsResult[],
+  config: {
+    openAi_key: string;
+    perplexity_key: string;
+  },
 ) => {
   if (contentArray.length === 0) return [];
   const queryInput = JSON.stringify(contentArray);
@@ -161,6 +218,7 @@ export const analyzeForHealthRelatedClaims = async (
   try {
     response = await analyseUsingPerplexity(
       messages as ChatCompletionsPostRequest['messages'],
+      config.perplexity_key,
     );
   } catch (error) {
     console.log(error, 'FROM PERPLEXITY');
@@ -169,6 +227,7 @@ export const analyzeForHealthRelatedClaims = async (
   if (!response.length) {
     return await analyseUsingOpenAi(
       messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+      config.openAi_key,
     );
   }
   return response;
@@ -232,14 +291,14 @@ export const updateOrCreateClaimCategoryRecord = async (
 
 export const generateMessage = (input: string, prevClaim: string) => {
   const supportedJournals = JSON.stringify([
-    'The New England Journal of Medicine (NEJM)',
-    'The Lancet',
-    'JAMA (Journal of the American Medical Association)',
-    'BMJ (British Medical Journal)',
-    'Nature Medicine',
-    'PLOS Medicine',
-    'Clinical Infectious Diseases (CID)',
-    'Annals of Internal Medicine',
+    Journal.NEJM,
+    Journal.Lancet,
+    Journal.JAMA,
+    Journal.BMJ,
+    Journal.NatureMedicine,
+    Journal.PLOSMedicine,
+    Journal.CID,
+    Journal.AnnalsIM,
   ]);
   const query = `here ${input} is an array of objects in JSON format analyze the "text" property of each objects and Extract distinct health-related claims (ensure there are no duplicated claims). For each claim, 
     1. Categorize it based on the subject of the claim (e.g., Nutrition, Fitness, Mental Health etc...) and associate it with its link (the link to be attached should only be gotten from the object where the text was being analysed from). 
@@ -276,6 +335,13 @@ export const getCategories = async (
   model: Model<ClaimCategory>,
 ): Promise<string[]> => {
   return (await model.findOne())?.categories || [];
+};
+
+export const getInfluencerDetails = async (
+  model: Model<InfluencerClaims>,
+  id: string,
+) => {
+  return (await model.findById(id)) || [];
 };
 
 export const getTotalVerifiedClaimAndAverageTrustScore = (
@@ -325,3 +391,19 @@ export const filterByCategory = async (
     },
   ]);
 };
+
+export function calculateAverageTrustScore(arr: AnalysedClaimsResult[]) {
+  if (arr.length === 0) return { averageTrustScore: 0, catergory: [] };
+  const set = new Set();
+
+  const totalTrustScore = arr.reduce((sum, obj) => {
+    if (!set.has(obj)) {
+      set.add(obj.category);
+    }
+    return sum + obj.trust_score;
+  }, 0);
+  const averageTrustScore = parseFloat(
+    (totalTrustScore / arr.length).toFixed(1),
+  );
+  return { averageTrustScore, catergory: [...set] };
+}

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { IGetLeaderboardResponse } from 'src/types';
+import { IGetLeaderboardResponse, Journal } from 'src/types';
 import { Claim, InfluencerClaims } from '../research/claims.schema';
 import { Category, ClaimCategory } from 'src/schema/category.schema';
 import { Model } from 'mongoose';
@@ -33,6 +33,16 @@ export class LeaderboardService {
         total_verified_claims,
         average_trust_score,
         claims,
+        journals: [
+          Journal.NEJM,
+          Journal.Lancet,
+          Journal.JAMA,
+          Journal.BMJ,
+          Journal.NatureMedicine,
+          Journal.PLOSMedicine,
+          Journal.CID,
+          Journal.AnnalsIM,
+        ],
       },
     };
   }
