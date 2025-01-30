@@ -13,6 +13,12 @@ export class Claim {
   claim: AnalysedClaimsResult[];
 
   @Prop({ required: true })
+  average_trust_score: string;
+
+  @Prop({ required: true })
+  categories: string[];
+
+  @Prop({ required: true })
   last_updated: number;
 }
 

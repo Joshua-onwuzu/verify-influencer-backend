@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Body, Injectable } from '@nestjs/common';
 import { AnalysedClaimsResult, ResearchInfluencerPayload } from 'src/types';
 import {
   analyzeForHealthRelatedClaims,
@@ -18,7 +18,12 @@ export class ResearchService {
     @InjectModel(Claim.name) private claimModel: Model<InfluencerClaims>,
     @InjectModel(Category.name) private categoryModel: Model<ClaimCategory>,
   ) {}
-  async researchInfluencer(data: ResearchInfluencerPayload) {
+  async researchInfluencer(@Body() data: ResearchInfluencerPayload): Promise<{
+    data: AnalysedClaimsResult[];
+    id: string;
+    success: boolean;
+    message: string;
+  }> {
     try {
       const {
         name,
@@ -29,7 +34,25 @@ export class ResearchService {
         assemblyAi_key,
         perplexity_key,
         twitter_bearer_token,
+        selected_journals,
       } = data;
+      if (!name || !time || !claim_size) {
+        return {
+          success: false,
+          message: 'Invalid params',
+          data: [],
+          id: '',
+        };
+      }
+      const details = await this.claimModel.findOne({ name });
+      if (details) {
+        return {
+          success: true,
+          data: details.claim,
+          id: details._id as string,
+          message: '',
+        };
+      }
       const twitterSearchResult = await searchTwitter(
         name,
         twitter_bearer_token,
@@ -51,6 +74,7 @@ export class ResearchService {
           success: true,
           data: [],
           message: 'No data found',
+          id: '',
         };
       }
       const previousClaims = ((await this.claimModel
@@ -60,6 +84,7 @@ export class ResearchService {
       const analyzedResult = await analyzeForHealthRelatedClaims(
         [...twitterSearchResult, ...podcastSearchResult],
         previousClaims,
+        selected_journals,
         {
           openAi_key,
           perplexity_key,
@@ -75,9 +100,13 @@ export class ResearchService {
         this.categoryModel,
       );
 
+      const result = await this.claimModel.findOne({ name });
+
       return {
         success: true,
-        data: analyzedResult,
+        data: result?.claim || [],
+        id: result?._id as string,
+        message: '',
       };
     } catch (error) {
       return {
@@ -85,6 +114,7 @@ export class ResearchService {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
         message: error.message || 'Failed to make research',
         data: [],
+        id: '',
       };
     }
   }

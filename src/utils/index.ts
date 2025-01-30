@@ -176,10 +176,14 @@ export const analyseUsingPerplexity = async (
     model: 'sonar-pro' as ChatCompletionsPostRequestModelEnum,
     messages,
   });
+  console.log({ result });
   const { choices } = result;
   if (!choices) return [];
+  console.log({ choices });
   const { content } = choices[0]
     .message as ChatCompletionsPostRequestMessagesInner;
+
+  console.log({ content });
   return JSON.parse(content) as AnalysedClaimsResult[];
 };
 
@@ -204,6 +208,7 @@ export const analyseUsingOpenAi = async (
 export const analyzeForHealthRelatedClaims = async (
   contentArray: SearchQueryResult[],
   previousClaims: AnalysedClaimsResult[],
+  selected_journals: Journal[],
   config: {
     openAi_key: string;
     perplexity_key: string;
@@ -213,9 +218,14 @@ export const analyzeForHealthRelatedClaims = async (
   const queryInput = JSON.stringify(contentArray);
   const previousClaimsAsString = JSON.stringify(previousClaims);
 
-  const messages = generateMessage(queryInput, previousClaimsAsString);
+  const messages = generateMessage(
+    queryInput,
+    previousClaimsAsString,
+    selected_journals,
+  );
   let response: AnalysedClaimsResult[] = [];
   try {
+    console.log('here');
     response = await analyseUsingPerplexity(
       messages as ChatCompletionsPostRequest['messages'],
       config.perplexity_key,
@@ -225,6 +235,7 @@ export const analyzeForHealthRelatedClaims = async (
   }
 
   if (!response.length) {
+    console.log('whatys up');
     return await analyseUsingOpenAi(
       messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
       config.openAi_key,
@@ -241,10 +252,13 @@ export const updateOrCreateClaimRecord = async (
   const record = await model.findOne({ name }).exec();
 
   if (!record) {
+    const t = calculateAverageTrustScoreAndCategory(claims);
     const response = new model({
       name,
       claim: claims,
       last_updated: Date.now(),
+      average_trust_score: t.averageTrustScore,
+      categories: t.catergory,
     });
 
     return response.save();
@@ -264,6 +278,56 @@ export const updateOrCreateClaimRecord = async (
 
     return response;
   }
+};
+
+export const updateInfluencerTrustScore = async (
+  model: Model<InfluencerClaims>,
+  {
+    name,
+    average_trust_score,
+  }: {
+    average_trust_score: string;
+    name: string;
+  },
+) => {
+  const response = await model
+    .findOneAndUpdate(
+      { name },
+      {
+        $set: {
+          average_trust_score,
+          last_updated: Date.now(),
+        },
+      },
+    )
+    .exec();
+
+  return response;
+};
+
+export const updateInfluencerDetailCategory = async (
+  model: Model<InfluencerClaims>,
+  {
+    name,
+    categories,
+  }: {
+    categories: string[];
+    name: string;
+  },
+) => {
+  const response = await model
+    .findOneAndUpdate(
+      { name },
+      {
+        $set: {
+          categories,
+          last_updated: Date.now(),
+        },
+      },
+    )
+    .exec();
+
+  return response;
 };
 
 export const initializeCollection = async (
@@ -289,17 +353,12 @@ export const updateOrCreateClaimCategoryRecord = async (
   }
 };
 
-export const generateMessage = (input: string, prevClaim: string) => {
-  const supportedJournals = JSON.stringify([
-    Journal.NEJM,
-    Journal.Lancet,
-    Journal.JAMA,
-    Journal.BMJ,
-    Journal.NatureMedicine,
-    Journal.PLOSMedicine,
-    Journal.CID,
-    Journal.AnnalsIM,
-  ]);
+export const generateMessage = (
+  input: string,
+  prevClaim: string,
+  journal: Journal[],
+) => {
+  const supportedJournals = JSON.stringify(journal);
   const query = `here ${input} is an array of objects in JSON format analyze the "text" property of each objects and Extract distinct health-related claims (ensure there are no duplicated claims). For each claim, 
     1. Categorize it based on the subject of the claim (e.g., Nutrition, Fitness, Mental Health etc...) and associate it with its link (the link to be attached should only be gotten from the object where the text was being analysed from). 
     2. Cross-reference claims against the following medical journals given to you here ${supportedJournals} as an array of string in JSON format 
@@ -341,13 +400,14 @@ export const getInfluencerDetails = async (
   model: Model<InfluencerClaims>,
   id: string,
 ) => {
-  return (await model.findById(id)) || [];
+  return await model.findById(id);
 };
 
-export const getTotalVerifiedClaimAndAverageTrustScore = (
-  data: InfluencerClaims[],
+export const getTotalVerifiedClaimAndAverageTrustScore = async (
+  model: Model<InfluencerClaims>,
 ) => {
-  const allClaims = data.flatMap((person) => person.claim);
+  const claims = await model.find().exec();
+  const allClaims = claims.flatMap((person) => person.claim);
   const verifiedClaims = allClaims.filter(
     (claim) => claim.verification_status === VerificationStatus.VERIFIED,
   );
@@ -362,6 +422,7 @@ export const getTotalVerifiedClaimAndAverageTrustScore = (
   return {
     total_verified_claims: totalVerifiedClaims,
     average_trust_score: parseFloat(averageTrustScore.toFixed(2)),
+    claims,
   };
 };
 
@@ -381,6 +442,9 @@ export const filterByCategory = async (
           },
         },
         last_updated: 1,
+        average_trust_score: 1,
+        categories: 1,
+
         __v: 1,
       },
     },
@@ -392,7 +456,9 @@ export const filterByCategory = async (
   ]);
 };
 
-export function calculateAverageTrustScore(arr: AnalysedClaimsResult[]) {
+export function calculateAverageTrustScoreAndCategory(
+  arr: AnalysedClaimsResult[],
+) {
   if (arr.length === 0) return { averageTrustScore: 0, catergory: [] };
   const set = new Set();
 

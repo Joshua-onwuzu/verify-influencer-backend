@@ -15,18 +15,13 @@ export interface IApiResponse {
 
 export interface IGetLeaderboardResponse extends IApiResponse {
   data: {
-    categories: string[];
-    total_claims: number;
-    total_verified_claims: number;
-    average_trust_score: number;
     claims: InfluencerClaims[];
-    journals: Journal[];
   };
 }
 export interface IGetInfluencerResponse extends IApiResponse {
   data: {
     detail: InfluencerClaims;
-    average_trust_score: number;
+    average_trust_score: string;
     total_claims: number;
     categories: string[];
   };
@@ -66,7 +61,14 @@ export type ResearchInfluencerPayload = {
   listen_notes_key: string;
   twitter_bearer_token: string;
 };
-
+export interface IGetGeneralInfoResponse extends IApiResponse {
+  data: {
+    categories: string[];
+    total_claims: number;
+    total_verified_claims: number;
+    average_trust_score: number;
+  };
+}
 export type PodcastEpisode = {
   audio: string;
   audio_length_sec: number;
