@@ -60,7 +60,6 @@ export type ResearchInfluencerPayload = {
   perplexity_key: string;
   listen_notes_key: string;
   twitter_bearer_token: string;
-  searches: SearchQueryResult[];
 };
 export interface IGetGeneralInfoResponse extends IApiResponse {
   data: {
@@ -131,4 +130,10 @@ export interface ISearchInfluencerResponse extends IApiResponse {
   data: {
     search: SearchQueryResult[];
   };
+}
+
+export interface IJob {
+  id: string;
+  status: 'pending' | 'completed';
+  claimId: string;
 }

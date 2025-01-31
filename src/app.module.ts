@@ -7,6 +7,7 @@ import { ResearchModule } from './research/research.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { GenralInfoModule } from './general-info/general-info.module';
+import { StateModule } from './state/state.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { GenralInfoModule } from './general-info/general-info.module';
     InfluencerModule,
     ResearchModule,
     GenralInfoModule,
+    StateModule,
   ],
   controllers: [AppController],
   providers: [AppService],

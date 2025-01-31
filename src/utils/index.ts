@@ -225,7 +225,6 @@ export const analyzeForHealthRelatedClaims = async (
   );
   let response: AnalysedClaimsResult[] = [];
   try {
-    console.log('here');
     response = await analyseUsingPerplexity(
       messages as ChatCompletionsPostRequest['messages'],
       config.perplexity_key,
@@ -235,7 +234,6 @@ export const analyzeForHealthRelatedClaims = async (
   }
 
   if (!response.length) {
-    console.log('whatys up');
     return await analyseUsingOpenAi(
       messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
       config.openAi_key,

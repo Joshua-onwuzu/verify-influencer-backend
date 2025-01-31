@@ -1,7 +1,13 @@
+/* eslint-disable @typescript-eslint/no-floating-promises */
 import { Body, Injectable } from '@nestjs/common';
-import { AnalysedClaimsResult, ResearchInfluencerPayload } from '../types';
+import {
+  AnalysedClaimsResult,
+  IJob,
+  ResearchInfluencerPayload,
+} from '../types';
 import {
   analyzeForHealthRelatedClaims,
+  searchPodcast,
   searchTwitter,
   updateOrCreateClaimCategoryRecord,
   updateOrCreateClaimRecord,
@@ -11,6 +17,7 @@ import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Category, ClaimCategory } from '../schema/category.schema';
 import { decryptKey, privateKey } from '../utils/crypto';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class ResearchService {
@@ -18,78 +25,102 @@ export class ResearchService {
     @InjectModel(Claim.name) private claimModel: Model<InfluencerClaims>,
     @InjectModel(Category.name) private categoryModel: Model<ClaimCategory>,
   ) {}
-  async researchInfluencer(@Body() data: ResearchInfluencerPayload): Promise<{
-    data: AnalysedClaimsResult[];
-    id: string;
+  researchInfluencer(
+    @Body() data: ResearchInfluencerPayload,
+    fn: (data: IJob) => void,
+  ): {
     success: boolean;
     message: string;
-  }> {
-    try {
-      const {
-        name,
-        searches,
-        claim_size,
-        openAi_key,
-        perplexity_key,
-        selected_journals,
-        time,
-        twitter_bearer_token,
-      } = data;
-      if (!name || !claim_size) {
-        return {
-          success: false,
-          message: 'Invalid params',
-          data: [],
-          id: '',
-        };
-      }
+    job: IJob | null;
+  } {
+    const {
+      name,
+      time,
+      listen_notes_key,
+      claim_size,
+      openAi_key,
+      assemblyAi_key,
+      perplexity_key,
+      twitter_bearer_token,
+      selected_journals,
+    } = data;
 
+    const jobId = randomUUID();
+
+    const job: IJob = {
+      id: jobId,
+      claimId: '',
+      status: 'pending',
+    };
+    if (!name || !time || !claim_size) {
+      return {
+        success: false,
+        message: 'Invalid params',
+        job: null,
+      };
+    }
+
+    const handleSearch = async () => {
       const twitterSearchResult = await searchTwitter(
         name,
         twitter_bearer_token,
         claim_size,
         time,
       );
+      const podcastSearchResult = await searchPodcast(
+        name,
+        listen_notes_key,
+        assemblyAi_key,
+        claim_size,
+        time,
+      );
+      if (
+        twitterSearchResult.length === 0 &&
+        podcastSearchResult.length === 0
+      ) {
+        await updateOrCreateClaimRecord([], name, this.claimModel);
+        await updateOrCreateClaimCategoryRecord([], this.categoryModel);
+        const result = await this.claimModel.findOne({ name });
+        job.claimId = result?._id as string;
+        job.status = 'completed';
+        fn(job);
+        return;
+      }
 
       const previousClaims = ((await this.claimModel
         .findOne({ name })
         .exec()) || []) as AnalysedClaimsResult[];
 
-      const analyzedResult = await analyzeForHealthRelatedClaims(
-        [...searches, ...twitterSearchResult],
+      analyzeForHealthRelatedClaims(
+        [...twitterSearchResult, ...podcastSearchResult],
         previousClaims,
         selected_journals,
         {
           openAi_key: decryptKey(privateKey, openAi_key),
           perplexity_key: decryptKey(privateKey, perplexity_key),
         },
-      );
+      ).then(async (analyzedResult) => {
+        await updateOrCreateClaimRecord(analyzedResult, name, this.claimModel);
+        const resultCategories = analyzedResult.map((data) => data.category);
 
-      await updateOrCreateClaimRecord(analyzedResult, name, this.claimModel);
+        await updateOrCreateClaimCategoryRecord(
+          resultCategories,
+          this.categoryModel,
+        );
+        const result = await this.claimModel.findOne({ name });
+        job.claimId = result?._id as string;
+        job.status = 'completed';
+        fn(job);
+      });
+    };
+    handleSearch();
 
-      const resultCategories = analyzedResult.map((data) => data.category);
+    fn(job);
 
-      await updateOrCreateClaimCategoryRecord(
-        resultCategories,
-        this.categoryModel,
-      );
-
-      const result = await this.claimModel.findOne({ name });
-
-      return {
-        success: true,
-        data: result?.claim || [],
-        id: result?._id as string,
-        message: '',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
-        message: error.message || 'Failed to make research',
-        data: [],
-        id: '',
-      };
-    }
+    return {
+      success: true,
+      job,
+      message: 'job queued',
+    };
   }
 }
