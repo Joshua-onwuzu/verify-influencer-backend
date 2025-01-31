@@ -137,4 +137,5 @@ export interface IJob {
   status: 'pending' | 'completed' | 'error';
   claimId: string;
   message: string;
+  isEmpty: boolean;
 }

@@ -219,18 +219,18 @@ export const analyzeForHealthRelatedClaims = async (
   );
   let response: AnalysedClaimsResult[] = [];
   try {
-    response = await analyseUsingPerplexity(
-      messages as ChatCompletionsPostRequest['messages'],
-      config.perplexity_key,
-    );
-  } catch (error) {
-    console.log(error, 'FROM PERPLEXITY');
-  }
-
-  if (!response.length) {
     return await analyseUsingOpenAi(
       messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
       config.openAi_key,
+    );
+  } catch (error) {
+    console.log(error, 'FROM OPEN AI');
+  }
+
+  if (!response.length) {
+    response = await analyseUsingPerplexity(
+      messages as ChatCompletionsPostRequest['messages'],
+      config.perplexity_key,
     );
   }
   return response;

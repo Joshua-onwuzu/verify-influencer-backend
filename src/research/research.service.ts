@@ -54,6 +54,7 @@ export class ResearchService {
       claimId: '',
       status: 'pending',
       message: '',
+      isEmpty: false,
     };
     if (!name || !time || !claim_size) {
       return {
@@ -117,6 +118,7 @@ export class ResearchService {
         const result = await this.claimModel.findOne({ name });
         job.claimId = result?._id as string;
         job.status = 'completed';
+        job.isEmpty = analyzedResult.length === 0;
         fn(job);
       } catch (error) {
         job.status = 'error';
