@@ -18,7 +18,11 @@ export class LeaderboardService {
     return {
       success: true,
       data: {
-        claims,
+        claims: claims.sort(
+          (a, b) =>
+            parseFloat(b.average_trust_score) -
+            parseFloat(a.average_trust_score),
+        ),
       },
     };
   }
