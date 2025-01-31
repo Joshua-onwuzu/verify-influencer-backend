@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { InfluencerController } from './influnencer.controller';
 import { InfluencerService } from './influencer.service';
 import { MongooseModule } from '@nestjs/mongoose';
-import { Claim, ClaimSchema } from 'src/research/claims.schema';
+import { Claim, ClaimSchema } from '../research/claims.schema';
 
 @Module({
   imports: [

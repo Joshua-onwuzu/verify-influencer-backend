@@ -12,16 +12,16 @@ import {
   SearchQueryResult,
   Time,
   VerificationStatus,
-} from 'src/types';
+} from '../types';
 import Perplexity, {
   ChatCompletionsPostRequest,
   ChatCompletionsPostRequestMessagesInner,
   ChatCompletionsPostRequestModelEnum,
 } from 'perplexity-sdk';
-import { InfluencerClaims } from 'src/research/claims.schema';
+import { InfluencerClaims } from '../research/claims.schema';
 import { Model } from 'mongoose';
 import OpenAI from 'openai';
-import { ClaimCategory } from 'src/schema/category.schema';
+import { ClaimCategory } from '../schema/category.schema';
 
 export const searchTwitter = async (
   query: string,

@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
-import { AnalysedClaimsResult } from 'src/types';
+import { AnalysedClaimsResult } from '../types';
 
 export type InfluencerClaims = Claim & Document;
 

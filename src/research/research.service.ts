@@ -1,17 +1,17 @@
 import { Body, Injectable } from '@nestjs/common';
-import { AnalysedClaimsResult, ResearchInfluencerPayload } from 'src/types';
+import { AnalysedClaimsResult, ResearchInfluencerPayload } from '../types';
 import {
   analyzeForHealthRelatedClaims,
   searchPodcast,
   searchTwitter,
   updateOrCreateClaimCategoryRecord,
   updateOrCreateClaimRecord,
-} from 'src/utils';
+} from '../utils';
 import { Claim, InfluencerClaims } from './claims.schema';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
-import { Category, ClaimCategory } from 'src/schema/category.schema';
-import { decryptKey, privateKey } from 'src/utils/crypto';
+import { Category, ClaimCategory } from '../schema/category.schema';
+import { decryptKey, privateKey } from '../utils/crypto';
 
 @Injectable()
 export class ResearchService {

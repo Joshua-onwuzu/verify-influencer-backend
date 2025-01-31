@@ -3,7 +3,7 @@ import { ResearchController } from './research.controller';
 import { ResearchService } from './research.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ClaimSchema, Claim } from './claims.schema';
-import { Category, CategorySchema } from 'src/schema/category.schema';
+import { Category, CategorySchema } from '../schema/category.schema';
 
 @Module({
   imports: [

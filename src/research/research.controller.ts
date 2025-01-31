@@ -1,6 +1,6 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { ResearchService } from './research.service';
-import { ResearchInfluencerPayload } from 'src/types';
+import { ResearchInfluencerPayload } from '../types';
 
 @Controller('research')
 export class ResearchController {

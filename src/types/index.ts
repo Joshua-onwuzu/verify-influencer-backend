@@ -1,4 +1,4 @@
-import { InfluencerClaims } from 'src/research/claims.schema';
+import { InfluencerClaims } from '../research/claims.schema';
 
 export type InfluencerProfile = {
   name: string;

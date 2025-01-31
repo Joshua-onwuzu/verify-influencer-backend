@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { IGetLeaderboardResponse } from 'src/types';
+import { IGetLeaderboardResponse } from '../types';
 import { Claim, InfluencerClaims } from '../research/claims.schema';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
-import { filterByCategory } from 'src/utils';
+import { filterByCategory } from '../utils';
 
 @Injectable()
 export class LeaderboardService {

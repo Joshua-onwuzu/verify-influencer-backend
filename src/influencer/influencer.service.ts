@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Claim, InfluencerClaims } from 'src/research/claims.schema';
-import { IGetInfluencerResponse } from 'src/types';
-import { getInfluencerDetails } from 'src/utils';
+import { Claim, InfluencerClaims } from '../research/claims.schema';
+import { IGetInfluencerResponse } from '../types';
+import { getInfluencerDetails } from '../utils';
 
 @Injectable()
 export class InfluencerService {

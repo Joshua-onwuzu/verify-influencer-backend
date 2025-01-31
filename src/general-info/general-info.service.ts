@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { Category, ClaimCategory } from 'src/schema/category.schema';
+import { Category, ClaimCategory } from '../schema/category.schema';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import {
   getCategories,
   getTotalVerifiedClaimAndAverageTrustScore,
-} from 'src/utils';
-import { IGetGeneralInfoResponse } from 'src/types';
-import { Claim, InfluencerClaims } from 'src/research/claims.schema';
+} from '../utils';
+import { IGetGeneralInfoResponse } from '../types';
+import { Claim, InfluencerClaims } from '../research/claims.schema';
 
 @Injectable()
 export class GeneralInfoService {
