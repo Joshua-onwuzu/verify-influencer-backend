@@ -2,7 +2,6 @@ import { Body, Injectable } from '@nestjs/common';
 import { AnalysedClaimsResult, ResearchInfluencerPayload } from '../types';
 import {
   analyzeForHealthRelatedClaims,
-  searchPodcast,
   searchTwitter,
   updateOrCreateClaimCategoryRecord,
   updateOrCreateClaimRecord,
@@ -28,16 +27,15 @@ export class ResearchService {
     try {
       const {
         name,
-        time,
-        listen_notes_key,
+        searches,
         claim_size,
         openAi_key,
-        assemblyAi_key,
         perplexity_key,
-        twitter_bearer_token,
         selected_journals,
+        time,
+        twitter_bearer_token,
       } = data;
-      if (!name || !time || !claim_size) {
+      if (!name || !claim_size) {
         return {
           success: false,
           message: 'Invalid params',
@@ -45,45 +43,20 @@ export class ResearchService {
           id: '',
         };
       }
-      const details = await this.claimModel.findOne({ name });
-      if (details) {
-        return {
-          success: true,
-          data: details.claim,
-          id: details._id as string,
-          message: '',
-        };
-      }
+
       const twitterSearchResult = await searchTwitter(
         name,
-        decryptKey(privateKey, twitter_bearer_token),
+        twitter_bearer_token,
         claim_size,
         time,
       );
-      const podcastSearchResult = await searchPodcast(
-        name,
-        decryptKey(privateKey, listen_notes_key),
-        decryptKey(privateKey, assemblyAi_key),
-        claim_size,
-        time,
-      );
-      if (
-        twitterSearchResult.length === 0 &&
-        podcastSearchResult.length === 0
-      ) {
-        return {
-          success: true,
-          data: [],
-          message: 'No data found',
-          id: '',
-        };
-      }
+
       const previousClaims = ((await this.claimModel
         .findOne({ name })
         .exec()) || []) as AnalysedClaimsResult[];
 
       const analyzedResult = await analyzeForHealthRelatedClaims(
-        [...twitterSearchResult, ...podcastSearchResult],
+        [...searches, ...twitterSearchResult],
         previousClaims,
         selected_journals,
         {
