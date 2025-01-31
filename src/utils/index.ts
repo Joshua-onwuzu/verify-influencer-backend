@@ -129,39 +129,33 @@ export const searchPodcast = async (
   size: number,
   time: Time,
 ): Promise<SearchQueryResult[]> => {
-  try {
-    const podcastClient = Client({
-      apiKey: podcast_key || process.env.LISTEN_NOTES_API_KEY,
-    });
-    const _time = getTimeRange(time);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const result = (await podcastClient.search({
-      q: query,
-      language: 'English',
-      page_size: size,
-      published_before: _time.end.getTime(),
-      published_after: _time.start?.getTime(),
-    })) as PodcastSearchResponse;
-    const resultData = result.data.results;
+  const podcastClient = Client({
+    apiKey: podcast_key || process.env.LISTEN_NOTES_API_KEY,
+  });
+  const _time = getTimeRange(time);
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  const result = (await podcastClient.search({
+    q: query,
+    language: 'English',
+    page_size: size,
+    published_before: _time.end.getTime(),
+    published_after: _time.start?.getTime(),
+  })) as PodcastSearchResponse;
+  const resultData = result.data.results;
 
-    return await Promise.all(
-      resultData.map(async (data) => {
-        const audioUrl = data.audio;
-        const transcript = await getTranscriptFromAudioUrl(
-          audioUrl,
-          assemblyAi_key,
-        );
-        return {
-          link: data.listennotes_url,
-          text: transcript || '', // TODO: maybe we entirely skip audio that fail to return a text
-        };
-      }),
-    );
-  } catch (error) {
-    console.log(error);
-
-    return [];
-  }
+  return await Promise.all(
+    resultData.map(async (data) => {
+      const audioUrl = data.audio;
+      const transcript = await getTranscriptFromAudioUrl(
+        audioUrl,
+        assemblyAi_key,
+      );
+      return {
+        link: data.listennotes_url,
+        text: transcript || '', // TODO: maybe we entirely skip audio that fail to return a text
+      };
+    }),
+  );
 };
 
 export const analyseUsingPerplexity = async (

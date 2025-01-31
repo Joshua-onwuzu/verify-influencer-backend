@@ -1,21 +1,11 @@
-import crypto from 'crypto';
+import NodeRSA from 'node-rsa';
 
-export function decryptKey(privateKeyPem: string, encryptedBase64: string) {
-  return encryptedBase64;
-  // Convert Base64 string to Buffer
-  const encryptedBuffer = Buffer.from(encryptedBase64, 'base64');
-
-  // Decrypt using the private key
-  const decryptedBuffer = crypto.privateDecrypt(
-    {
-      key: privateKeyPem,
-      padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-    },
-    encryptedBuffer,
-  );
-
-  return decryptedBuffer.toString('utf8'); // Convert Buffer to String
+export function decryptText(encryptedData: string, key: string) {
+  if (!encryptedData) return encryptedData;
+  if (!key) throw new Error('No private key');
+  const keyRSA = new NodeRSA(key, 'private', {
+    encryptionScheme: 'pkcs1',
+  });
+  keyRSA.setOptions({ environment: 'browser' }); //By default it will use the node crypto library with the CVE
+  return keyRSA.decrypt(encryptedData);
 }
-
-// Usage Example:
-export const privateKey = process.env.PRIVATE_KEY as string;

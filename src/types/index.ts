@@ -134,6 +134,7 @@ export interface ISearchInfluencerResponse extends IApiResponse {
 
 export interface IJob {
   id: string;
-  status: 'pending' | 'completed';
+  status: 'pending' | 'completed' | 'error';
   claimId: string;
+  message: string;
 }
