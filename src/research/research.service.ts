@@ -11,6 +11,7 @@ import { Claim, InfluencerClaims } from './claims.schema';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Category, ClaimCategory } from 'src/schema/category.schema';
+import { decryptKey, privateKey } from 'src/utils/crypto';
 
 @Injectable()
 export class ResearchService {
@@ -55,14 +56,14 @@ export class ResearchService {
       }
       const twitterSearchResult = await searchTwitter(
         name,
-        twitter_bearer_token,
+        decryptKey(privateKey, twitter_bearer_token),
         claim_size,
         time,
       );
       const podcastSearchResult = await searchPodcast(
         name,
-        listen_notes_key,
-        assemblyAi_key,
+        decryptKey(privateKey, listen_notes_key),
+        decryptKey(privateKey, assemblyAi_key),
         claim_size,
         time,
       );
@@ -86,8 +87,8 @@ export class ResearchService {
         previousClaims,
         selected_journals,
         {
-          openAi_key,
-          perplexity_key,
+          openAi_key: decryptKey(privateKey, openAi_key),
+          perplexity_key: decryptKey(privateKey, perplexity_key),
         },
       );
 
